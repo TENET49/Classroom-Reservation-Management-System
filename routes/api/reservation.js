@@ -51,9 +51,6 @@ router.get('/my', async (req, res) => {
  */
 router.post('/:id/cancel', async (req, res) => {
   try {
-    if (!req.body) {
-      return res.send(getErr('Request body is missing', 400));
-    }
     const { userId } = req.body; // 同样，实际应从 Token 获取
     if (!userId) {
       return res.send(getErr('userId is required', 400));

@@ -5,6 +5,7 @@ import roomRouter from './api/room.js'
 import authRouter from './api/auth.js'
 import reservationRouter from './api/reservation.js'
 import adminRouter from './api/admin.js'
+import cors from 'cors'
 
 const app = express()
 
@@ -15,6 +16,26 @@ const staticPath = fileURLToPath(
 app.use(express.static(staticPath))
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
+
+// 加入 cors 中间件
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, "*")
+      return
+    }
+    callback(null, origin)
+  },
+  credentials: true
+}))
+
+// 加入 cookie-parser 中间件
+import cookieParser from 'cookie-parser'
+app.use(cookieParser())
+
+// 加入 token 中间件
+import tokenMiddleware from './tokenMiddleware.js'
+app.use(tokenMiddleware)
 
 // 处理 api 的请求
 
