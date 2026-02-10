@@ -1,0 +1,59 @@
+import { User } from '../models/index.js';
+
+class UserService {
+  /**
+   * 创建用户 (注册)
+   * @param {Object} userData - 用户数据
+   * @returns {Promise<User>}
+   */
+  async createUser(userData) {
+    try {
+      // 检查邮箱是否存在
+      const existingUser = await User.findOne({ where: { email: userData.email } });
+      if (existingUser) {
+        throw new Error('邮箱已被注册');
+      }
+      
+      // 映射 password 到 password_hash (如果传入的是 password)
+      const dataToCreate = { ...userData };
+      if (userData.password && !userData.password_hash) {
+        dataToCreate.password_hash = userData.password;
+        delete dataToCreate.password;
+      }
+
+      const user = await User.create(dataToCreate);
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * 用户登录验证
+   * @param {string} email 
+   * @param {string} password 
+   * @returns {Promise<User>}
+   */
+  async login(email, password) {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+    // TODO: 实际生产环境应使用 bcrypt 验证哈希密码
+    if (user.password_hash !== password) {
+      throw new Error('密码错误');
+    }
+    return user;
+  }
+
+  /**
+   * 获取用户信息
+   * @param {number} id 
+   * @returns {Promise<User>}
+   */
+  async getUserById(id) {
+    return await User.findByPk(id);
+  }
+}
+
+export default new UserService();
