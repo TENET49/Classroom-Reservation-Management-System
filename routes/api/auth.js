@@ -46,7 +46,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        role: user.role
+        role: user.role,
+        email: user.email // 添加 email 字段
       }
     }));
   } catch (error) {
