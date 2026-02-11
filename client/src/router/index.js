@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 // 页面组件
 import Home from '../views/Home.vue'
+import Layout from '../layout/Layout.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 // 该方法会创建一个路由的实例
@@ -13,7 +14,7 @@ const router = createRouter({
     {
       path: '/', // 路由的路径
       name: 'Home',
-      component: Home // 路由对应的组件
+      component: Layout // 路由对应的组件
     },
     {
       path: '/protect',
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('../views/Login.vue')
+    },
+    {
+      path: '/index',
+      name: 'Index',
+      component: () => import('../views/index.vue')
     }
   ]
 })
