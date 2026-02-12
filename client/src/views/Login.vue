@@ -48,7 +48,10 @@
           <h4>请填写以下信息以注册账号</h4>
         </div>
         <div class="form">
-          <div class="username input-item">
+          <div class="name input-item">
+            <input type="text" class="ipts" v-model="regName" placeholder="Name" />
+          </div>
+          <div class="email input-item">
             <input type="text" class="ipts" v-model="regEmail" placeholder="Email" />
           </div>
           <div class="password input-item">
@@ -118,17 +121,18 @@ const handleLogin = async () => {
   if (success) {
     router.push('/')
   } else {
-    alert('Login failed')
+    alert('账号或密码错误')
   }
 }
 
 // Register logic
+const regName = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
 const regConfirmPassword = ref('')
 
 const handleRegister = async () => {
-  if (!regEmail.value || !regPassword.value || !regConfirmPassword.value) {
+  if (!regName.value || !regEmail.value || !regPassword.value || !regConfirmPassword.value) {
     alert('Please fill all fields')
     return
   }
@@ -140,7 +144,7 @@ const handleRegister = async () => {
   // 调用注册接口
   try {
     const res = await authService.register({
-      name: regEmail.value.split('@')[0], // 简单提取名字
+      name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
       role: 'student', // 默认注册为学生
@@ -296,6 +300,12 @@ const handleSendCode = () => {
 /* 简单的标签映射，实际项目中可以用 v-bind 或 props */
 .username.input-item::before {
   content: '用户名/邮箱';
+}
+.name.input-item::before {
+  content: '姓名';
+}
+.email.input-item::before {
+  content: '邮箱';
 }
 .password.input-item::before {
   content: '密码';

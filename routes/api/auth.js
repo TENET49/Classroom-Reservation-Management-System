@@ -34,11 +34,12 @@ router.post('/register', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.send(getErr('email and password are required', 400));
+    // 这里的 loginInput 可以是 email 或 name
+    const { email: loginInput, password } = req.body;
+    if (!loginInput || !password) {
+      return res.send(getErr('username/email and password are required', 400));
     }
-    const user = await userService.login(email, password);
+    const user = await userService.login(loginInput, password);
     jwt.publish(res, 3600 * 24, { id: user.id, role: user.role });
 
     res.send(getResult({

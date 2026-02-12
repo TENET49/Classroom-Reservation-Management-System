@@ -16,7 +16,10 @@
   </div>
 </template>
 
-<script setup></script>
+<script setup>
+import Header from '@/components/Header.vue'
+import Sidebar from '@/components/Sidebar.vue'
+</script>
 
 <style scoped>
 .common-layout {

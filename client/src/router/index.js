@@ -14,19 +14,33 @@ const router = createRouter({
     {
       path: '/', // 路由的路径
       name: 'Home',
-      component: Layout // 路由对应的组件
-    },
-    {
-      path: '/protect',
-      name: 'Protect',
-      component: () => import('../views/Protect.vue'),
-      beforeEnter: (to, from, next) => {
+      component: Layout,// 路由对应的组件
+      children: [
+        {
+          path: '/',
+          name: 'Index',
+          component: () => import('../views/index.vue')
+        }
+      ],
+      beforeEnter: async (to, from, next) => {
         const authStore = useAuthStore()
         if (authStore.user) {
           next()
-        } else {
-          next('/login')
+          return
         }
+        const token = localStorage.getItem('token')
+        if (token) {
+          try {
+            await authStore.whoAmI()
+            if (authStore.user) {
+              next()
+              return
+            }
+          } catch (e) {
+            console.error(e)
+          }
+        }
+        next('/login')
       }
     },
     {
@@ -34,11 +48,6 @@ const router = createRouter({
       name: 'Login',
       component: () => import('../views/Login.vue')
     },
-    {
-      path: '/index',
-      name: 'Index',
-      component: () => import('../views/index.vue')
-    }
   ]
 })
 export default router

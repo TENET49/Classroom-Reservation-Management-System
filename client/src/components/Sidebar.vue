@@ -1,49 +1,122 @@
 <template>
   <el-menu
-    default-active="2"
+    :default-active="activeMenu"
     class="el-menu-vertical-demo"
     :collapse="isCollapse"
+    router
     @open="handleOpen"
     @close="handleClose"
   >
-    <el-sub-menu index="1">
+    <div class="title-container">
+      <h1>教室预约系统</h1>
+    </div>
+
+    <el-menu-item index="/">
+      <el-icon><icon-menu /></el-icon>
+      <span>系统首页</span>
+    </el-menu-item>
+
+    <el-sub-menu index="2">
       <template #title>
-        <el-icon><location /></el-icon>
-        <span>Navigator One</span>
+        <el-icon><Calendar /></el-icon>
+        <span>教室预约</span>
       </template>
       <el-menu-item-group>
-        <template #title><span>Group One</span></template>
-        <el-menu-item index="1-1">item one</el-menu-item>
-        <el-menu-item index="1-2">item two</el-menu-item>
+        <el-menu-item index="/classroom/search">查询可用教室</el-menu-item>
+        <el-menu-item index="/reservation/create">发起预约申请</el-menu-item>
+        <el-menu-item index="/my-reservation">我的预约记录</el-menu-item>
       </el-menu-item-group>
-      <el-menu-item-group title="Group Two">
-        <el-menu-item index="1-3">item three</el-menu-item>
-      </el-menu-item-group>
-      <el-sub-menu index="1-4">
-        <template #title><span>item four</span></template>
-        <el-menu-item index="1-4-1">item one</el-menu-item>
-      </el-sub-menu>
     </el-sub-menu>
-    <el-menu-item index="2">
-      <el-icon><icon-menu /></el-icon>
-      <template #title>Navigator Two</template>
-    </el-menu-item>
-    <el-menu-item index="3" disabled>
-      <el-icon><document /></el-icon>
-      <template #title>Navigator Three</template>
-    </el-menu-item>
-    <el-menu-item index="4">
-      <el-icon><setting /></el-icon>
-      <template #title>Navigator Four</template>
-    </el-menu-item>
+
+    <!-- 2. 个人中心 -->
+    <el-sub-menu index="3">
+      <template #title>
+        <el-icon><User /></el-icon>
+        <span>个人中心</span>
+      </template>
+      <el-menu-item-group>
+        <el-menu-item index="3-1">个人信息</el-menu-item>
+        <el-menu-item index="3-2">消息通知</el-menu-item>
+      </el-menu-item-group>
+    </el-sub-menu>
+
+    <!-- 3. 管理员专区 (需要权限控制 v-if) -->
+    <template v-if="authStore.user?.role === 'admin'">
+      <el-sub-menu index="4">
+        <template #title>
+          <el-icon><Management /></el-icon>
+          <span>教室资源管理</span>
+        </template>
+        <el-menu-item-group>
+          <el-menu-item index="4-1">楼栋管理</el-menu-item>
+          <el-menu-item index="4-2">教室类型管理</el-menu-item>
+          <el-menu-item index="4-3">教室信息管理</el-menu-item>
+          <el-menu-item index="4-4">教室状态维护</el-menu-item>
+        </el-menu-item-group>
+      </el-sub-menu>
+
+      <el-sub-menu index="5">
+        <template #title>
+          <el-icon><List /></el-icon>
+          <span>课表与占用</span>
+        </template>
+        <el-menu-item-group>
+          <el-menu-item index="5-1">导入教师课表</el-menu-item>
+          <el-menu-item index="5-2">导入教室课表</el-menu-item>
+          <el-menu-item index="5-3">占用状态总览</el-menu-item>
+        </el-menu-item-group>
+      </el-sub-menu>
+
+      <el-sub-menu index="6">
+        <template #title>
+          <el-icon><Stamp /></el-icon>
+          <span>预约审核</span>
+        </template>
+        <el-menu-item-group>
+          <el-menu-item index="6-1">待审核列表</el-menu-item>
+          <el-menu-item index="6-2">历史审核记录</el-menu-item>
+        </el-menu-item-group>
+      </el-sub-menu>
+
+      <el-sub-menu index="7">
+        <template #title>
+          <el-icon><TrendCharts /></el-icon>
+          <span>数据统计</span>
+        </template>
+        <el-menu-item-group>
+          <el-menu-item index="7-1">使用率报表</el-menu-item>
+          <el-menu-item index="7-2">预约记录导出</el-menu-item>
+          <el-menu-item index="7-3">系统日志</el-menu-item>
+        </el-menu-item-group>
+      </el-sub-menu>
+    </template>
   </el-menu>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Document, Menu as IconMenu, Location, Setting } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import {
+  Document,
+  Menu as IconMenu,
+  Location,
+  Setting,
+  Calendar,
+  User,
+  Management,
+  List,
+  Stamp,
+  TrendCharts,
+} from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/useAuthStore'
 
+const authStore = useAuthStore()
 const isCollapse = ref(false)
+const route = useRoute()
+
+// 自动高亮当前路由对应的菜单项
+const activeMenu = computed(() => route.path)
+
 const handleOpen = (key, keyPath) => {
   console.log(key, keyPath)
 }
@@ -55,6 +128,45 @@ const handleClose = (key, keyPath) => {
 <style scoped>
 .el-menu-vertical-demo:not(.el-menu--collapse) {
   width: 200px;
-  min-height: 400px;
+  height: 100%;
+  background-color: #2d3250;
+}
+
+/* 覆盖 el-menu 本身的背景色，防止被 Element Plus 默认样式覆盖 */
+.el-menu {
+  background-color: #2d3250;
+  border-right: none; /* 去掉默认的右边框 */
+}
+
+/* 设置菜单项的文字颜色 */
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  color: #ffffff;
+  background-color: #2d3250; /* 确保背景色也是绿色 */
+}
+
+/* 鼠标悬停时的样式 */
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background-color: #5e6692 !important; /* 稍微深一点的绿色 */
+}
+
+/* 选中项高亮样式 */
+:deep(.el-menu-item.is-active) {
+  background-color: #409eff !important; /* Element Plus 默认蓝 */
+  color: #fff;
+}
+:deep(.el-menu-item-group__title) {
+  background-color: #5e6692;
+  display: none; /* 通常不需要显示 group title，如果需要显示可以去掉这行并调整颜色 */
+}
+
+.title-container {
+  height: 70px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  color: #ffffff;
 }
 </style>

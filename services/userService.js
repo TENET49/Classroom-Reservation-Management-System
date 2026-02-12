@@ -30,12 +30,19 @@ class UserService {
 
   /**
    * 用户登录验证
-   * @param {string} email 
+   * @param {string} loginInput - 邮箱或用户名
    * @param {string} password 
    * @returns {Promise<User>}
    */
-  async login(email, password) {
-    const user = await User.findOne({ where: { email } });
+  async login(loginInput, password) {
+    // 尝试用邮箱查找
+    let user = await User.findOne({ where: { email: loginInput } });
+    
+    // 如果邮箱没找到，尝试用用户名查找
+    if (!user) {
+      user = await User.findOne({ where: { name: loginInput } });
+    }
+
     if (!user) {
       throw new Error('用户不存在');
     }
