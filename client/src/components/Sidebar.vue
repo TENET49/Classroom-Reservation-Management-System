@@ -22,7 +22,7 @@
         <span>教室预约</span>
       </template>
       <el-menu-item-group>
-        <el-menu-item index="/classroom/search">查询可用教室</el-menu-item>
+        <el-menu-item index="/search">查询可用教室</el-menu-item>
         <el-menu-item index="/reservation/create">发起预约申请</el-menu-item>
         <el-menu-item index="/my-reservation">我的预约记录</el-menu-item>
       </el-menu-item-group>

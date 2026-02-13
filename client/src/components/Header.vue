@@ -5,8 +5,8 @@
         <template #title>
           <span class="home-link" @click="goHome">首页</span>
         </template>
-        <template #content>
-          <span class="text-large font-600 mr-3"> 教室预约 </span>
+        <template v-if="showPageTitle" #content>
+          <span class="page-title">{{ pageTitle }}</span>
         </template>
       </el-page-header>
     </div>
@@ -29,13 +29,14 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
 const authStore = useAuthStore()
 // 注意：我们在 useAuthStore 中把 data 重命名为了 user
 const { user, isLoading } = storeToRefs(authStore)
 const router = useRouter()
+const route = useRoute()
 
 const currentTime = ref(dayjs().format('YYYY-MM-DD HH:mm:ss'))
 let timer = null
@@ -58,16 +59,32 @@ const welcomeMessage = computed(() => {
   const name = user.value.name
 
   if (role === 'admin') {
-    // 这里假设管理员有更细分的职位，如果目前只有一个 admin 角色，暂时统称管理员
-    // 如果后续 user 对象里有 position 字段，可以改成 user.value.position
     return `欢迎，${name}（管理员）`
   } else if (role === 'teacher') {
     return `欢迎，${name}老师`
   } else {
-    // 默认为学生
     return `欢迎，${name}同学`
   }
 })
+
+const pageTitle = computed(() => {
+  const metaTitle = route.meta?.title
+  if (typeof metaTitle === 'string') return metaTitle
+
+  const map = {
+    '/search': '查询可用教室',
+    '/reservation/create': '发起预约申请',
+    '/my-reservation': '我的预约记录',
+    '/notifications': '通知中心',
+    '/admin/audit': '预约审核',
+    '/admin/occupancy': '占用状态总览',
+    '/admin/maintenance': '教室状态维护',
+    '/admin/statistics': '使用率统计',
+  }
+  return map[route.path] || ''
+})
+
+const showPageTitle = computed(() => !['/', '/index'].includes(route.path) && !!pageTitle.value)
 
 const goHome = () => {
   router.push('/')
@@ -82,10 +99,10 @@ const handleLogout = () => {
 <style scoped>
 .header-content {
   display: flex;
-  justify-content: space-between; /* 左右两端对齐 */
+  justify-content: space-between;
   align-items: center;
   height: 100%;
-  padding: 0 20px; /* 增加左侧 padding */
+  padding: 0 20px;
 }
 .right-panel {
   display: flex;
@@ -96,7 +113,11 @@ const handleLogout = () => {
   font-weight: bold;
 }
 .home-link:hover {
-  color: #409eff; /* Element Plus 默认蓝色 */
+  color: #409eff;
+}
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
 }
 .current-time {
   margin-right: 15px;
@@ -105,6 +126,6 @@ const handleLogout = () => {
 }
 .user-name {
   margin-right: 15px;
-  font-weight: bold;
+  font-weight: normal;
 }
 </style>

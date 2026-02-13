@@ -5,6 +5,7 @@ import roomRouter from './api/room.js'
 import authRouter from './api/auth.js'
 import reservationRouter from './api/reservation.js'
 import adminRouter from './api/admin.js'
+import scheduleRouter from './api/schedule.js'
 import cors from 'cors'
 
 const app = express()
@@ -43,6 +44,7 @@ app.use('/api/room', roomRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/reservations', reservationRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/schedule', scheduleRouter)
 
 
 const port = 5010

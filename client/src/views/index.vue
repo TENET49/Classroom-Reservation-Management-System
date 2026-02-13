@@ -75,7 +75,7 @@
             <span>快捷功能</span>
           </template>
           <div class="quick-actions">
-            <el-button type="primary" icon="Search" size="large" @click="router.push('/classroom/search')"
+            <el-button type="primary" icon="Search" size="large" @click="router.push('/search')"
               >查询可用教室</el-button
             >
             <el-button type="success" icon="Plus" size="large" @click="router.push('/reservation/create')"
@@ -161,7 +161,7 @@ const userCards = [
     icon: Search,
     items: ['日期：今天', '节次：第三大节', '类型：多媒体', '人数：30'],
     footer: '进入查询页面',
-    action: '/classroom/search',
+    action: '/search',
   },
   {
     title: '当前推荐教室',

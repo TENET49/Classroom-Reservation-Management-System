@@ -27,14 +27,24 @@ class ScheduleService {
    * @returns {Promise<boolean>} - true表示有冲突(忙)，false表示空闲
    */
   async checkTeacherConflict(teacherId, date, timeSlotId) {
-    const count = await TeacherSchedule.count({
-      where: {
-        teacher_id: teacherId,
-        date: date,
-        time_slot_id: timeSlotId
-      }
-    });
-    return count > 0;
+    const [teacherScheduleCount, courseCount] = await Promise.all([
+      TeacherSchedule.count({
+        where: {
+          teacher_id: teacherId,
+          date,
+          time_slot_id: timeSlotId
+        }
+      }),
+      Course.count({
+        where: {
+          teacher_id: teacherId,
+          date,
+          time_slot_id: timeSlotId
+        }
+      })
+    ])
+
+    return teacherScheduleCount > 0 || courseCount > 0
   }
 
   /**

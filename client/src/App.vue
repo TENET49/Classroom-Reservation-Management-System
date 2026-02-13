@@ -1,10 +1,11 @@
 <script setup>
-// App.vue 是根组件，主要职责是提供路由出口
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 </script>
 
 <template>
-  <!-- 路由匹配到的组件将在这里渲染 -->
-  <router-view />
+  <el-config-provider :locale="zhCn">
+    <router-view />
+  </el-config-provider>
 </template>
 
 <style>

@@ -26,6 +26,10 @@ const needTokenApi = [
   { method: "POST", path: "/api/admin/import/courses", roles: ['admin'] },
   { method: "GET", path: "/api/admin/stats/usage", roles: ['admin'] },
 
+  // 教师课表
+  { method: "GET", path: "/api/schedule/teacher/conflict", roles: ['teacher'] },
+  { method: "GET", path: "/api/schedule/teacher/free-slots", roles: ['teacher'] },
+
   // 认证相关
   { method: "GET", path: "/api/auth/whoami" },
 ]
