@@ -45,6 +45,30 @@ const router = createRouter({
           name: 'Notifications',
           component: () => import('../views/notifications.vue'),
           meta: { title: '通知中心' }
+        },
+        {
+          path: '/admin/audit',
+          name: 'AdminAudit',
+          component: () => import('../views/admin/audit.vue'),
+          meta: { title: '预约审核' }
+        },
+        {
+          path: '/admin/occupancy',
+          name: 'AdminOccupancy',
+          component: () => import('../views/admin/occupancy.vue'),
+          meta: { title: '占用状态总览' }
+        },
+        {
+          path: '/admin/maintenance',
+          name: 'AdminMaintenance',
+          component: () => import('../views/admin/maintenance.vue'),
+          meta: { title: '教室状态维护' }
+        },
+        {
+          path: '/admin/statistics',
+          name: 'AdminStatistics',
+          component: () => import('../views/admin/statistics.vue'),
+          meta: { title: '使用率统计' }
         }
       ],
       beforeEnter: async (to, from, next) => {

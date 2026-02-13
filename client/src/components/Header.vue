@@ -68,20 +68,7 @@ const welcomeMessage = computed(() => {
 })
 
 const pageTitle = computed(() => {
-  const metaTitle = route.meta?.title
-  if (typeof metaTitle === 'string') return metaTitle
-
-  const map = {
-    '/search': '查询可用教室',
-    '/reservation/create': '发起预约申请',
-    '/my-reservation': '我的预约记录',
-    '/notifications': '通知中心',
-    '/admin/audit': '预约审核',
-    '/admin/occupancy': '占用状态总览',
-    '/admin/maintenance': '教室状态维护',
-    '/admin/statistics': '使用率统计',
-  }
-  return map[route.path] || ''
+  return route.meta?.title || ''
 })
 
 const showPageTitle = computed(() => !['/', '/index'].includes(route.path) && !!pageTitle.value)

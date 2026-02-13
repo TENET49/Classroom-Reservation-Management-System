@@ -51,7 +51,7 @@
           <el-menu-item index="4-1">楼栋管理</el-menu-item>
           <el-menu-item index="4-2">教室类型管理</el-menu-item>
           <el-menu-item index="4-3">教室信息管理</el-menu-item>
-          <el-menu-item index="4-4">教室状态维护</el-menu-item>
+          <el-menu-item index="/admin/maintenance">教室状态维护</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
 
@@ -63,7 +63,7 @@
         <el-menu-item-group>
           <el-menu-item index="5-1">导入教师课表</el-menu-item>
           <el-menu-item index="5-2">导入教室课表</el-menu-item>
-          <el-menu-item index="5-3">占用状态总览</el-menu-item>
+          <el-menu-item index="/admin/occupancy">占用状态总览</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
 
@@ -73,7 +73,7 @@
           <span>预约审核</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="6-1">待审核列表</el-menu-item>
+          <el-menu-item index="/admin/audit">待审核列表</el-menu-item>
           <el-menu-item index="6-2">历史审核记录</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
@@ -84,7 +84,7 @@
           <span>数据统计</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="7-1">使用率报表</el-menu-item>
+          <el-menu-item index="/admin/statistics">使用率报表</el-menu-item>
           <el-menu-item index="7-2">预约记录导出</el-menu-item>
           <el-menu-item index="7-3">系统日志</el-menu-item>
         </el-menu-item-group>

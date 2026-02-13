@@ -31,19 +31,17 @@ import Sidebar from '@/components/Sidebar.vue'
 .el-header {
   background-color: #b3c0d1;
   color: #333;
-  text-align: center;
   line-height: 60px;
 }
 .el-aside {
   background-color: #d3dce6;
   color: #333;
-  text-align: center;
-  line-height: 200px;
+  line-height: normal;
 }
 .el-main {
   background-color: #e9eef3;
   color: #333;
-  text-align: center;
-  line-height: 160px;
+  line-height: normal;
+  padding: 0;
 }
 </style>
