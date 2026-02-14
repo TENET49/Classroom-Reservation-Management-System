@@ -35,8 +35,12 @@
         <span>个人中心</span>
       </template>
       <el-menu-item-group>
-        <el-menu-item index="3-1">个人信息</el-menu-item>
-        <el-menu-item index="3-2">消息通知</el-menu-item>
+        <el-menu-item index="/profile">个人信息</el-menu-item>
+        <el-menu-item index="/notifications">
+          <el-badge :value="notificationStore.unreadCount" :hidden="notificationStore.unreadCount === 0" :max="99">
+            <span>消息通知</span>
+          </el-badge>
+        </el-menu-item>
       </el-menu-item-group>
     </el-sub-menu>
 
@@ -94,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Document,
@@ -109,8 +113,10 @@ import {
   TrendCharts,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useNotificationStore } from '@/stores/useNotificationStore'
 
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 const isCollapse = ref(false)
 const route = useRoute()
 
@@ -123,6 +129,14 @@ const handleOpen = (key, keyPath) => {
 const handleClose = (key, keyPath) => {
   console.log(key, keyPath)
 }
+
+watch(
+  () => authStore.user?.id,
+  (id) => {
+    if (id) notificationStore.refresh()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>

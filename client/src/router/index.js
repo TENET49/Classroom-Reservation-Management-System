@@ -29,6 +29,12 @@ const router = createRouter({
           meta: { title: '查询可用教室' }
         },
         {
+          path: '/profile',
+          name: 'Profile',
+          component: () => import('../views/profile.vue'),
+          meta: { title: '个人信息' }
+        },
+        {
           path: '/reservation/create',
           name: 'ReservationCreate',
           component: () => import('../views/reservation-create.vue'),
