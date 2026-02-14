@@ -2,9 +2,27 @@ import request from './request.js';
 
 export default {
   // 审核预约
-  // data: { adminId, action, reason }
+  // data: { action, reason, adminId? }
   auditReservation(id, data) {
     return request.post(`/admin/reservations/${id}/audit`, data);
+  },
+
+  // 待审核预约列表
+  // params: { page, pageSize, date, buildingId, roomTypeId, keyword }
+  getPendingReservations(params) {
+    return request.get('/admin/reservations/pending', { params });
+  },
+
+  // 审核历史
+  // params: { page, pageSize, action, startDate, endDate, keyword }
+  getAuditHistory(params) {
+    return request.get('/admin/audits', { params });
+  },
+
+  // 系统日志
+  // params: { page, pageSize, userId, action, targetType, targetId, startDate, endDate, keyword }
+  getSystemLogs(params) {
+    return request.get('/admin/system-logs', { params });
   },
 
   // 导入教师课表

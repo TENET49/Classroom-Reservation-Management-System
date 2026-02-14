@@ -78,7 +78,7 @@
         </template>
         <el-menu-item-group>
           <el-menu-item index="/admin/audit">待审核列表</el-menu-item>
-          <el-menu-item index="6-2">历史审核记录</el-menu-item>
+          <el-menu-item index="/admin/audit-history">历史审核记录</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
 

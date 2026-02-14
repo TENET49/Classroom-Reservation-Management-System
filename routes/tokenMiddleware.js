@@ -22,6 +22,9 @@ const needTokenApi = [
 
   // 管理员业务 - 仅管理员
   { method: "POST", path: "/api/admin/reservations/:id/audit", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/reservations/pending", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/audits", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/system-logs", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/teacher-schedules", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/courses", roles: ['admin'] },
   { method: "GET", path: "/api/admin/stats/usage", roles: ['admin'] },

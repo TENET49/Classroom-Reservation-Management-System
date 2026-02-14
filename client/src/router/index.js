@@ -59,6 +59,12 @@ const router = createRouter({
           meta: { title: '预约审核' }
         },
         {
+          path: '/admin/audit-history',
+          name: 'AdminAuditHistory',
+          component: () => import('../views/admin/audit-history.vue'),
+          meta: { title: '历史审核记录' }
+        },
+        {
           path: '/admin/occupancy',
           name: 'AdminOccupancy',
           component: () => import('../views/admin/occupancy.vue'),

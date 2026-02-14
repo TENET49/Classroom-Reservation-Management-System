@@ -77,8 +77,9 @@ RoomUnavailable.belongsTo(Room, { foreignKey: 'room_id' });
 TimeSlot.hasMany(RoomUnavailable, { foreignKey: 'time_slot_id' });
 RoomUnavailable.belongsTo(TimeSlot, { foreignKey: 'time_slot_id' });
 
-// SystemLog user_id (Optional)
-// SystemLog.belongsTo(User, { foreignKey: 'user_id' });
+// 17. User - SystemLog (One-to-Many, Optional)
+User.hasMany(SystemLog, { foreignKey: 'user_id' });
+SystemLog.belongsTo(User, { foreignKey: 'user_id' });
 
 export {
   User,

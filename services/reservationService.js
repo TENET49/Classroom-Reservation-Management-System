@@ -1,9 +1,23 @@
-import { Reservation, ReservationAudit, User, Room, TimeSlot, Admin, AdminScope, Building, RoomType } from '../models/index.js';
+import { Reservation, ReservationAudit, User, Room, TimeSlot, Admin, AdminScope, Building, RoomType, SystemLog } from '../models/index.js';
 import scheduleService from './scheduleService.js';
 import roomService from './roomService.js';
 import { sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 
 class ReservationService {
+  async writeSystemLog({ userId, action, targetType, targetId }, options = {}) {
+    if (!action) return
+    await SystemLog.create(
+      {
+        user_id: userId || null,
+        action,
+        target_type: targetType || null,
+        target_id: targetId || null
+      },
+      options
+    )
+  }
+
   /**
    * 提交预约申请
    * @param {Object} data
@@ -53,7 +67,7 @@ class ReservationService {
     }
 
     // 3. 创建预约
-    return await Reservation.create({
+    const reservation = await Reservation.create({
       user_id: userId,
       room_id: roomId,
       time_slot_id: timeSlotId,
@@ -61,6 +75,15 @@ class ReservationService {
       people_count: peopleCount,
       status: 'pending'
     });
+
+    await this.writeSystemLog({
+      userId,
+      action: 'reservation.create',
+      targetType: 'Reservation',
+      targetId: reservation.id
+    })
+
+    return reservation
   }
 
   /**
@@ -141,6 +164,17 @@ class ReservationService {
         reason
       }, { transaction });
 
+      const admin = await Admin.findByPk(adminId, { transaction })
+      await this.writeSystemLog(
+        {
+          userId: admin?.user_id || null,
+          action: action === 'approve' ? 'reservation.audit.approve' : 'reservation.audit.reject',
+          targetType: 'Reservation',
+          targetId: reservation.id
+        },
+        { transaction }
+      )
+
       await transaction.commit();
       return reservation;
 
@@ -184,7 +218,129 @@ class ReservationService {
       reservation.status = 'cancelled';
       await reservation.save();
     }
+
+    await this.writeSystemLog({
+      userId,
+      action: 'reservation.cancel',
+      targetType: 'Reservation',
+      targetId: reservation.id
+    })
+
     return reservation;
+  }
+
+  async getPendingReservations(adminId, query = {}) {
+    const admin = await Admin.findByPk(adminId)
+    if (!admin) throw new Error('管理员不存在')
+
+    const {
+      page = 1,
+      pageSize = 20,
+      date,
+      buildingId,
+      roomTypeId,
+      keyword
+    } = query
+
+    const limit = Math.min(Math.max(parseInt(pageSize) || 20, 1), 200)
+    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limit
+
+    const adminScopes = await AdminScope.findAll({ where: { admin_id: adminId } })
+    const buildingScopeIds = adminScopes.filter(s => s.scope_type === 'building').map(s => s.scope_id)
+    const roomTypeScopeIds = adminScopes.filter(s => s.scope_type === 'room_type').map(s => s.scope_id)
+
+    const roomWhere = {}
+    const scopeOr = []
+    if (buildingScopeIds.length > 0) scopeOr.push({ building_id: { [Op.in]: buildingScopeIds } })
+    if (roomTypeScopeIds.length > 0) scopeOr.push({ room_type_id: { [Op.in]: roomTypeScopeIds } })
+    if (scopeOr.length > 0) roomWhere[Op.or] = scopeOr
+
+    if (buildingId) roomWhere.building_id = buildingId
+    if (roomTypeId) roomWhere.room_type_id = roomTypeId
+
+    const where = { status: 'pending' }
+    if (date) where.date = date
+
+    if (keyword) {
+      const kw = `%${String(keyword).trim()}%`
+      where[Op.or] = [
+        { '$Room.room_number$': { [Op.like]: kw } },
+        { '$User.name$': { [Op.like]: kw } },
+        { '$User.email$': { [Op.like]: kw } }
+      ]
+    }
+
+    const { rows, count } = await Reservation.findAndCountAll({
+      where,
+      include: [
+        { model: User, attributes: ['id', 'name', 'email', 'role'] },
+        {
+          model: Room,
+          include: [Building, RoomType],
+          where: Object.keys(roomWhere).length > 0 ? roomWhere : undefined,
+          required: Object.keys(roomWhere).length > 0
+        },
+        { model: TimeSlot }
+      ],
+      order: [['created_at', 'DESC']],
+      limit,
+      offset
+    })
+
+    return { list: rows, total: count, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }
+  }
+
+  async getAuditHistory(adminId, query = {}) {
+    const admin = await Admin.findByPk(adminId)
+    if (!admin) throw new Error('管理员不存在')
+
+    const {
+      page = 1,
+      pageSize = 20,
+      action,
+      startDate,
+      endDate,
+      keyword
+    } = query
+
+    const limit = Math.min(Math.max(parseInt(pageSize) || 20, 1), 200)
+    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limit
+
+    const where = {}
+    if (action) where.action = action
+    if (startDate && endDate) {
+      where.created_at = { [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59`] }
+    }
+
+    if (keyword) {
+      const kw = `%${String(keyword).trim()}%`
+      where[Op.or] = [
+        { '$Reservation.Room.room_number$': { [Op.like]: kw } },
+        { '$Reservation.User.name$': { [Op.like]: kw } },
+        { '$Reservation.User.email$': { [Op.like]: kw } },
+        { reason: { [Op.like]: kw } }
+      ]
+    }
+
+    const { rows, count } = await ReservationAudit.findAndCountAll({
+      where,
+      include: [
+        { model: Admin, include: [{ model: User, attributes: ['id', 'name', 'email', 'role'] }] },
+        {
+          model: Reservation,
+          include: [
+            { model: User, attributes: ['id', 'name', 'email', 'role'] },
+            { model: Room, include: [Building, RoomType] },
+            { model: TimeSlot }
+          ]
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit,
+      offset
+    })
+
+    return { list: rows, total: count, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }
   }
 }
 

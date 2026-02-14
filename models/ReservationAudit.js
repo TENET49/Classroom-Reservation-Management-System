@@ -7,6 +7,14 @@ const ReservationAudit = sequelize.define('ReservationAudit', {
     primaryKey: true,
     autoIncrement: true
   },
+  reservation_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  admin_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
   action: {
     type: DataTypes.ENUM('approve', 'reject'),
     allowNull: false
