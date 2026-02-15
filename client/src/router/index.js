@@ -81,6 +81,13 @@ const router = createRouter({
           name: 'AdminStatistics',
           component: () => import('../views/admin/statistics.vue'),
           meta: { title: '使用率统计' }
+        },
+        { path: '/admin/export', redirect: '/admin/statistics?tab=export' },
+        {
+          path: '/admin/system-logs',
+          name: 'AdminSystemLogs',
+          component: () => import('../views/admin/system-logs.vue'),
+          meta: { title: '系统日志' }
         }
       ],
       beforeEnter: async (to, from, next) => {

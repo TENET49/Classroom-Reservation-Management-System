@@ -25,6 +25,12 @@ export default {
     return request.get('/admin/system-logs', { params });
   },
 
+  // 导出预约记录（预览/导出）
+  // params: { startDate, endDate, status, buildingId, roomTypeId, keyword, page, pageSize, exportAll }
+  exportReservationRecords(params) {
+    return request.get('/admin/reservations/export', { params });
+  },
+
   // 导入教师课表
   importTeacherSchedules(data) {
     return request.post('/admin/import/teacher-schedules', data);

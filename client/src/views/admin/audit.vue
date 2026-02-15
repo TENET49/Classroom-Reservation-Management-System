@@ -40,7 +40,7 @@
       >
         <el-table-column prop="created_at" label="提交时间" width="170">
           <template #default="{ row }">
-            <span>{{ formatDateTime(row.created_at) }}</span>
+            <span>{{ formatDateTime(row.createdAt || row.created_at) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="申请人" width="160">

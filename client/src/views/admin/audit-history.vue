@@ -44,7 +44,7 @@
       >
         <el-table-column label="时间" width="170">
           <template #default="{ row }">
-            <span>{{ formatDateTime(row.created_at) }}</span>
+            <span>{{ formatDateTime(row.createdAt || row.created_at) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="结果" width="110">
@@ -113,20 +113,34 @@
     <el-drawer v-model="detailVisible" size="40%" :title="drawerTitle">
       <template v-if="detailRow">
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="审核时间">{{ formatDateTime(detailRow.created_at) }}</el-descriptions-item>
-          <el-descriptions-item label="审核结果">{{ detailRow.action === 'approve' ? '通过' : '驳回' }}</el-descriptions-item>
+          <el-descriptions-item label="审核时间">{{
+            formatDateTime(detailRow.createdAt || detailRow.created_at)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="审核结果">{{
+            detailRow.action === 'approve' ? '通过' : '驳回'
+          }}</el-descriptions-item>
           <el-descriptions-item label="审核理由">{{ detailRow.reason || '—' }}</el-descriptions-item>
         </el-descriptions>
 
         <div class="drawer-section">预约信息</div>
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="教室">{{ detailRow?.Reservation?.Room?.room_number || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="楼栋">{{ detailRow?.Reservation?.Room?.Building?.name || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="类型">{{ detailRow?.Reservation?.Room?.RoomType?.name || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="教室">{{
+            detailRow?.Reservation?.Room?.room_number || '—'
+          }}</el-descriptions-item>
+          <el-descriptions-item label="楼栋">{{
+            detailRow?.Reservation?.Room?.Building?.name || '—'
+          }}</el-descriptions-item>
+          <el-descriptions-item label="类型">{{
+            detailRow?.Reservation?.Room?.RoomType?.name || '—'
+          }}</el-descriptions-item>
           <el-descriptions-item label="日期">{{ detailRow?.Reservation?.date || '—' }}</el-descriptions-item>
           <el-descriptions-item label="节次">{{ formatTimeSlot(detailRow?.Reservation) }}</el-descriptions-item>
           <el-descriptions-item label="人数">{{ detailRow?.Reservation?.people_count ?? '—' }}</el-descriptions-item>
-          <el-descriptions-item label="申请人">{{ detailRow?.Reservation?.User?.name || '—' }}（{{ detailRow?.Reservation?.User?.email || '—' }}）</el-descriptions-item>
+          <el-descriptions-item label="申请人"
+            >{{ detailRow?.Reservation?.User?.name || '—' }}（{{
+              detailRow?.Reservation?.User?.email || '—'
+            }}）</el-descriptions-item
+          >
         </el-descriptions>
       </template>
       <template v-else>
@@ -150,7 +164,7 @@ const pageSize = ref(20)
 const filters = ref({
   action: null,
   dateRange: null,
-  keyword: ''
+  keyword: '',
 })
 
 function formatDateTime(v) {
@@ -179,7 +193,7 @@ async function refresh() {
       action: filters.value.action || undefined,
       startDate,
       endDate,
-      keyword: filters.value.keyword || undefined
+      keyword: filters.value.keyword || undefined,
     })
     if (resp?.code === 0) {
       list.value = resp?.data?.list || []
@@ -214,7 +228,7 @@ watch(
   () => {
     page.value = 1
     refresh()
-  }
+  },
 )
 
 onMounted(() => {
@@ -283,4 +297,3 @@ onMounted(() => {
   font-weight: 600;
 }
 </style>
-

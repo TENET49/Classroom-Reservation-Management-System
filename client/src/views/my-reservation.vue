@@ -78,6 +78,14 @@
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
+            <el-button
+              size="small"
+              type="primary"
+              :disabled="row?.status !== 'approved'"
+              @click="printReservation(row)"
+            >
+              打印
+            </el-button>
             <el-popconfirm
               title="确认取消该预约？"
               confirm-button-text="确认"
@@ -106,6 +114,12 @@
           <el-descriptions-item label="人数">{{ detailRow.people_count ?? '—' }}</el-descriptions-item>
           <el-descriptions-item label="状态">{{ statusText(detailRow.status) }}</el-descriptions-item>
         </el-descriptions>
+
+        <div class="drawer-actions">
+          <el-button type="primary" :disabled="detailRow.status !== 'approved'" @click="printReservation(detailRow)">
+            打印预约单
+          </el-button>
+        </div>
 
         <div class="drawer-section">最新审核意见</div>
         <template v-if="latestAudit(detailRow)">
@@ -265,6 +279,131 @@ function openDetail(row) {
   detailVisible.value = true
 }
 
+function escapeHtml(v) {
+  return String(v ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function getApproverName(row) {
+  const a = latestAudit(row)
+  return a?.Admin?.User?.name || ''
+}
+
+function getApproverEmail(row) {
+  const a = latestAudit(row)
+  return a?.Admin?.User?.email || ''
+}
+
+function auditTimeText(row) {
+  const a = latestAudit(row)
+  const t = a?.createdAt || a?.created_at
+  if (!t) return ''
+  return dayjs(t).format('YYYY-MM-DD HH:mm')
+}
+
+function printReservation(row) {
+  if (!row || row.status !== 'approved') return
+
+  const applicantName = user.value?.name || row?.User?.name || ''
+  const applicantEmail = user.value?.email || row?.User?.email || ''
+  const roomNumber = row?.Room?.room_number || ''
+  const buildingName = row?.Room?.Building?.name || ''
+  const roomTypeName = row?.Room?.RoomType?.name || ''
+  const dateText = row?.date || ''
+  const timeText = formatTimeSlot(row)
+  const people = row?.people_count ?? ''
+  const approverName = getApproverName(row)
+  const approverEmail = getApproverEmail(row)
+  const approvedAt = auditTimeText(row)
+  const auditReason = latestAudit(row)?.reason || ''
+  const reservationId = row?.id ?? ''
+
+  const html = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>预约单-${escapeHtml(reservationId)}</title>
+  <style>
+    @page { size: A4; margin: 14mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; color: #111827; }
+    .wrap { width: 100%; }
+    .title { text-align: center; font-size: 20px; font-weight: 700; margin: 0 0 10px; }
+    .sub { text-align: center; color: #6b7280; margin: 0 0 18px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .item { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; }
+    .label { color: #6b7280; font-size: 12px; }
+    .value { margin-top: 6px; font-size: 14px; font-weight: 600; word-break: break-all; }
+    .section { margin-top: 14px; }
+    .section-title { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+    .reason { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; min-height: 44px; color: #374151; }
+    .foot { margin-top: 16px; display: flex; justify-content: space-between; color: #6b7280; font-size: 12px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #ecfdf5; color: #065f46; font-weight: 700; font-size: 12px; }
+    .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body onload="setTimeout(function(){window.print()},50)">
+  <div class="wrap">
+    <div class="title">教室预约单</div>
+    <div class="sub">
+      <div class="row">
+        <span class="badge">已通过</span>
+        <span>预约编号：${escapeHtml(reservationId)}</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="item">
+        <div class="label">申请人</div>
+        <div class="value">${escapeHtml(applicantName)}${applicantEmail ? `（${escapeHtml(applicantEmail)}）` : ''}</div>
+      </div>
+      <div class="item">
+        <div class="label">教室</div>
+        <div class="value">${escapeHtml(roomNumber)}${buildingName ? `｜${escapeHtml(buildingName)}` : ''}${roomTypeName ? `｜${escapeHtml(roomTypeName)}` : ''}</div>
+      </div>
+      <div class="item">
+        <div class="label">使用日期</div>
+        <div class="value">${escapeHtml(dateText)}</div>
+      </div>
+      <div class="item">
+        <div class="label">节次</div>
+        <div class="value">${escapeHtml(timeText)}</div>
+      </div>
+      <div class="item">
+        <div class="label">使用人数</div>
+        <div class="value">${escapeHtml(people)}</div>
+      </div>
+      <div class="item">
+        <div class="label">审批信息</div>
+        <div class="value">${approverName ? `${escapeHtml(approverName)}${approverEmail ? `（${escapeHtml(approverEmail)}）` : ''}` : '—'}${approvedAt ? `｜${escapeHtml(approvedAt)}` : ''}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">审核备注</div>
+      <div class="reason">${auditReason ? escapeHtml(auditReason) : '—'}</div>
+    </div>
+
+    <div class="foot">
+      <div>打印时间：${escapeHtml(dayjs().format('YYYY-MM-DD HH:mm'))}</div>
+      <div class="no-print">提示：可在打印对话框选择“另存为 PDF”</div>
+    </div>
+  </div>
+</body>
+</html>`
+
+  const w = window.open('', '_blank')
+  if (!w) return
+  w.document.open()
+  w.document.write(html)
+  w.document.close()
+}
+
 watch(
   () => user.value?.id,
   (id) => {
@@ -321,5 +460,11 @@ onMounted(() => {
 .audit-detail {
   margin-top: 10px;
   color: #606266;
+}
+
+.drawer-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
 }
 </style>

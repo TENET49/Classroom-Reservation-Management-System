@@ -3,7 +3,7 @@ import { getErr, getResult } from '../getSendResult.js';
 import reservationService from '../../services/reservationService.js';
 import scheduleService from '../../services/scheduleService.js';
 import statisticsService from '../../services/statisticsService.js';
-import { Admin, SystemLog, User } from '../../models/index.js';
+import { Admin, SystemLog, User, Reservation, Room, Building, RoomType, TimeSlot } from '../../models/index.js';
 import { Op } from 'sequelize';
 
 const router = express.Router();
@@ -86,7 +86,7 @@ router.get('/system-logs', async (req, res) => {
     if (targetType) where.target_type = String(targetType)
     if (targetId) where.target_id = parseInt(targetId)
     if (startDate && endDate) {
-      where.created_at = { [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59`] }
+      where.createdAt = { [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59`] }
     }
     if (keyword) {
       const kw = `%${String(keyword).trim()}%`
@@ -99,11 +99,40 @@ router.get('/system-logs', async (req, res) => {
     const { rows, count } = await SystemLog.findAndCountAll({
       where,
       include: [{ model: User, attributes: ['id', 'name', 'email', 'role'] }],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit,
       offset
     })
-    res.send(getResult({ list: rows, total: count, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }))
+
+    const reservationIds = Array.from(
+      new Set(
+        (rows || [])
+          .filter((x) => x?.target_type === 'Reservation' && x?.target_id)
+          .map((x) => x.target_id)
+      )
+    )
+    const reservationMap = new Map()
+    if (reservationIds.length > 0) {
+      const reservations = await Reservation.findAll({
+        where: { id: { [Op.in]: reservationIds } },
+        include: [
+          { model: User, attributes: ['id', 'name', 'email', 'role'] },
+          { model: Room, include: [Building, RoomType] },
+          { model: TimeSlot }
+        ]
+      })
+      for (const r of reservations) reservationMap.set(r.id, r)
+    }
+
+    const list = (rows || []).map((x) => {
+      const plain = x.toJSON()
+      if (plain.target_type === 'Reservation' && plain.target_id) {
+        plain.reservation = reservationMap.get(plain.target_id) || null
+      }
+      return plain
+    })
+
+    res.send(getResult({ list, total: count, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }))
   } catch (error) {
     console.error(error);
     res.send(getErr(error.message));
@@ -152,11 +181,49 @@ router.post('/import/courses', async (req, res) => {
  */
 router.get('/stats/usage', async (req, res) => {
   try {
+    const { startDate, endDate, groupBy, buildingId, roomTypeId } = req.query;
+    if (!startDate || !endDate) {
+      return res.send(getErr('startDate and endDate are required', 400));
+    }
+    const result = await statisticsService.getRoomUsageStats(startDate, endDate, groupBy, {
+      buildingId: buildingId ? parseInt(buildingId) : undefined,
+      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined
+    });
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+router.get('/reservations/export', async (req, res) => {
+  try {
     const { startDate, endDate } = req.query;
     if (!startDate || !endDate) {
       return res.send(getErr('startDate and endDate are required', 400));
     }
-    const result = await statisticsService.getRoomUsageStats(startDate, endDate);
+
+    const {
+      status,
+      buildingId,
+      roomTypeId,
+      keyword,
+      page,
+      pageSize,
+      exportAll
+    } = req.query
+
+    const result = await statisticsService.exportReservationRecords({
+      startDate,
+      endDate,
+      status: status || undefined,
+      buildingId: buildingId ? parseInt(buildingId) : undefined,
+      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined,
+      keyword: keyword || undefined,
+      page: page ? parseInt(page) : 1,
+      pageSize: pageSize ? parseInt(pageSize) : 50,
+      exportAll: String(exportAll || '').toLowerCase() === 'true' || exportAll === '1'
+    })
     res.send(getResult(result));
   } catch (error) {
     console.error(error);

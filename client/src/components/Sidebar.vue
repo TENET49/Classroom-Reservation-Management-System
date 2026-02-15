@@ -88,9 +88,8 @@
           <span>数据统计</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="/admin/statistics">使用率报表</el-menu-item>
-          <el-menu-item index="7-2">预约记录导出</el-menu-item>
-          <el-menu-item index="7-3">系统日志</el-menu-item>
+          <el-menu-item index="/admin/statistics?tab=usage">使用率报表</el-menu-item>
+          <el-menu-item index="/admin/system-logs">系统日志</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
     </template>
@@ -121,7 +120,7 @@ const isCollapse = ref(false)
 const route = useRoute()
 
 // 自动高亮当前路由对应的菜单项
-const activeMenu = computed(() => route.path)
+const activeMenu = computed(() => route.fullPath)
 
 const handleOpen = (key, keyPath) => {
   console.log(key, keyPath)
@@ -135,7 +134,7 @@ watch(
   (id) => {
     if (id) notificationStore.refresh()
   },
-  { immediate: true }
+  { immediate: true },
 )
 </script>
 

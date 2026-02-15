@@ -112,7 +112,7 @@ class ReservationService {
       // 获取管理员的管辖范围
       const adminScopes = await AdminScope.findAll({ where: { admin_id: adminId } });
       let hasPermission = false;
-      
+
       for (const scope of adminScopes) {
         if (scope.scope_type === 'building' && scope.scope_id === reservation.Room.building_id) {
           hasPermission = true;
@@ -131,8 +131,8 @@ class ReservationService {
         // 检查是否是系统超级管理员 (User.role === 'admin')
         const adminUser = await Admin.findByPk(adminId, { include: [User] });
         if (adminUser?.User?.role !== 'admin') {
-           // 如果不是超级管理员，且没有scope权限
-           throw new Error('无权审核该教室的预约');
+          // 如果不是超级管理员，且没有scope权限
+          throw new Error('无权审核该教室的预约');
         }
       }
 
@@ -191,9 +191,14 @@ class ReservationService {
     return await Reservation.findAll({
       where: { user_id: userId },
       include: [
-        { model: Room, attributes: ['room_number'] },
+        { model: Room, include: [Building, RoomType] },
         { model: TimeSlot, attributes: ['start_time', 'end_time'] },
-        { model: ReservationAudit, limit: 1, order: [['created_at', 'DESC']] } // 获取最新的审核意见
+        {
+          model: ReservationAudit,
+          limit: 1,
+          order: [['createdAt', 'DESC']],
+          include: [{ model: Admin, include: [{ model: User, attributes: ['id', 'name', 'email', 'role'] }] }]
+        } // 获取最新的审核意见
       ],
       order: [['date', 'DESC']]
     });
@@ -282,7 +287,7 @@ class ReservationService {
         },
         { model: TimeSlot }
       ],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit,
       offset
     })
@@ -309,7 +314,7 @@ class ReservationService {
     const where = {}
     if (action) where.action = action
     if (startDate && endDate) {
-      where.created_at = { [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59`] }
+      where.createdAt = { [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59`] }
     }
 
     if (keyword) {
@@ -335,7 +340,7 @@ class ReservationService {
           ]
         }
       ],
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit,
       offset
     })
