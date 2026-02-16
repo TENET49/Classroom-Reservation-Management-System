@@ -3,6 +3,7 @@ import { getErr, getResult } from '../getSendResult.js';
 import reservationService from '../../services/reservationService.js';
 import scheduleService from '../../services/scheduleService.js';
 import statisticsService from '../../services/statisticsService.js';
+import roomService from '../../services/roomService.js';
 import { Admin, SystemLog, User, Reservation, Room, Building, RoomType, TimeSlot } from '../../models/index.js';
 import { Op } from 'sequelize';
 
@@ -139,6 +140,34 @@ router.get('/system-logs', async (req, res) => {
   }
 })
 
+router.get('/users', async (req, res) => {
+  try {
+    const adminId = await resolveAdminId(req)
+    if (!adminId) return res.status(403).send(getErr('adminId is required', 403))
+
+    const { role, keyword } = req.query
+    const where = {}
+    if (role) where.role = String(role)
+    if (keyword) {
+      const kw = `%${String(keyword).trim()}%`
+      where[Op.or] = [
+        { name: { [Op.like]: kw } },
+        { email: { [Op.like]: kw } }
+      ]
+    }
+
+    const list = await User.findAll({
+      where,
+      attributes: ['id', 'name', 'email', 'role'],
+      order: [['name', 'ASC'], ['id', 'ASC']]
+    })
+    res.send(getResult({ list }))
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+})
+
 /**
  * 导入教师课表
  * POST /import/teacher-schedules
@@ -230,5 +259,20 @@ router.get('/reservations/export', async (req, res) => {
     res.send(getErr(error.message));
   }
 });
+
+router.get('/occupancy', async (req, res) => {
+  try {
+    const { date, buildingId, roomTypeId } = req.query
+    if (!date) return res.send(getErr('date is required', 400))
+    const result = await roomService.getDailyOccupancy(date, {
+      buildingId: buildingId ? parseInt(buildingId) : undefined,
+      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined
+    })
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+})
 
 export default router;

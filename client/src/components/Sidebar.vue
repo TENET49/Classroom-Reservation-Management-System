@@ -52,9 +52,9 @@
           <span>教室资源管理</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="4-1">楼栋管理</el-menu-item>
-          <el-menu-item index="4-2">教室类型管理</el-menu-item>
-          <el-menu-item index="4-3">教室信息管理</el-menu-item>
+          <el-menu-item index="/admin/buildings">楼栋管理</el-menu-item>
+          <el-menu-item index="/admin/resources?tab=room-types">教室类型管理</el-menu-item>
+          <el-menu-item index="/admin/resources?tab=rooms">教室信息管理</el-menu-item>
           <el-menu-item index="/admin/maintenance">教室状态维护</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>
@@ -65,8 +65,8 @@
           <span>课表与占用</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="5-1">导入教师课表</el-menu-item>
-          <el-menu-item index="5-2">导入教室课表</el-menu-item>
+          <el-menu-item index="/admin/import/teacher-schedules">导入教师占用事项</el-menu-item>
+          <el-menu-item index="/admin/import/courses">导入教室课表</el-menu-item>
           <el-menu-item index="/admin/occupancy">占用状态总览</el-menu-item>
         </el-menu-item-group>
       </el-sub-menu>

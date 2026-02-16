@@ -65,10 +65,34 @@ const router = createRouter({
           meta: { title: '历史审核记录' }
         },
         {
+          path: '/admin/buildings',
+          name: 'AdminBuildings',
+          component: () => import('../views/admin/buildings.vue'),
+          meta: { title: '楼栋管理' }
+        },
+        {
+          path: '/admin/resources',
+          name: 'AdminResources',
+          component: () => import('../views/admin/resources.vue'),
+          meta: { title: '教室资源管理' }
+        },
+        {
           path: '/admin/occupancy',
           name: 'AdminOccupancy',
           component: () => import('../views/admin/occupancy.vue'),
           meta: { title: '占用状态总览' }
+        },
+        {
+          path: '/admin/import/teacher-schedules',
+          name: 'AdminImportTeacherSchedules',
+          component: () => import('../views/admin/import-teacher-schedules.vue'),
+          meta: { title: '导入教师占用事项' }
+        },
+        {
+          path: '/admin/import/courses',
+          name: 'AdminImportCourses',
+          component: () => import('../views/admin/import-courses.vue'),
+          meta: { title: '导入教室课表' }
         },
         {
           path: '/admin/maintenance',

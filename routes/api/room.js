@@ -44,6 +44,56 @@ router.get('/all', async (req, res) => {
 });
 
 /**
+ * 获取楼栋列表 (管理员)
+ * GET /buildings
+ * Query: page, pageSize, keyword
+ */
+router.get('/buildings', async (req, res) => {
+  try {
+    const result = await roomService.getBuildings(req.query);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 获取教室类型列表 (管理员)
+ * GET /room-types
+ * Query: page, pageSize, keyword
+ */
+router.get('/room-types', async (req, res) => {
+  try {
+    const result = await roomService.getRoomTypes(req.query);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+router.get('/unavailable', async (req, res) => {
+  try {
+    const result = await roomService.listRoomUnavailables(req.query)
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+router.delete('/unavailable/:id', async (req, res) => {
+  try {
+    const result = await roomService.deleteRoomUnavailable(req.params.id)
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
  * 获取教室详情
  * GET /:id
  */
@@ -108,12 +158,96 @@ router.post('/building', async (req, res) => {
 });
 
 /**
+ * 更新楼栋 (管理员)
+ * PUT /building/:id
+ */
+router.put('/building/:id', async (req, res) => {
+  try {
+    const result = await roomService.updateBuilding(req.params.id, req.body);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 删除楼栋 (管理员)
+ * DELETE /building/:id
+ */
+router.delete('/building/:id', async (req, res) => {
+  try {
+    const result = await roomService.deleteBuilding(req.params.id);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
  * 创建教室类型 (管理员)
  * POST /room-type
  */
 router.post('/room-type', async (req, res) => {
   try {
     const result = await roomService.createRoomType(req.body);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 更新教室类型 (管理员)
+ * PUT /room-type/:id
+ */
+router.put('/room-type/:id', async (req, res) => {
+  try {
+    const result = await roomService.updateRoomType(req.params.id, req.body);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 删除教室类型 (管理员)
+ * DELETE /room-type/:id
+ */
+router.delete('/room-type/:id', async (req, res) => {
+  try {
+    const result = await roomService.deleteRoomType(req.params.id);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 更新教室 (管理员)
+ * PUT /:id
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const result = await roomService.updateRoom(req.params.id, req.body);
+    res.send(getResult(result));
+  } catch (error) {
+    console.error(error);
+    res.send(getErr(error.message));
+  }
+});
+
+/**
+ * 删除教室 (管理员)
+ * DELETE /:id
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await roomService.deleteRoom(req.params.id);
     res.send(getResult(result));
   } catch (error) {
     console.error(error);

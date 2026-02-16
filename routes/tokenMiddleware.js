@@ -5,9 +5,19 @@ import jwt from './jwt.js'
 const needTokenApi = [
   // 教室管理 - 仅管理员
   { method: "POST", path: "/api/room", roles: ['admin'] },
+  { method: "PUT", path: "/api/room/:id", roles: ['admin'] },
+  { method: "DELETE", path: "/api/room/:id", roles: ['admin'] },
   { method: "POST", path: "/api/room/building", roles: ['admin'] },
+  { method: "GET", path: "/api/room/buildings", roles: ['admin'] },
+  { method: "PUT", path: "/api/room/building/:id", roles: ['admin'] },
+  { method: "DELETE", path: "/api/room/building/:id", roles: ['admin'] },
   { method: "POST", path: "/api/room/room-type", roles: ['admin'] },
+  { method: "GET", path: "/api/room/room-types", roles: ['admin'] },
+  { method: "PUT", path: "/api/room/room-type/:id", roles: ['admin'] },
+  { method: "DELETE", path: "/api/room/room-type/:id", roles: ['admin'] },
   { method: "POST", path: "/api/room/unavailable", roles: ['admin'] },
+  { method: "GET", path: "/api/room/unavailable", roles: ['admin'] },
+  { method: "DELETE", path: "/api/room/unavailable/:id", roles: ['admin'] },
 
   // 教室查询 - 所有人
   { method: "GET", path: "/api/room/available" },
@@ -25,7 +35,9 @@ const needTokenApi = [
   { method: "GET", path: "/api/admin/reservations/pending", roles: ['admin'] },
   { method: "GET", path: "/api/admin/audits", roles: ['admin'] },
   { method: "GET", path: "/api/admin/system-logs", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/users", roles: ['admin'] },
   { method: "GET", path: "/api/admin/reservations/export", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/occupancy", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/teacher-schedules", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/courses", roles: ['admin'] },
   { method: "GET", path: "/api/admin/stats/usage", roles: ['admin'] },
