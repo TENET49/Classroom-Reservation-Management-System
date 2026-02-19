@@ -41,15 +41,13 @@ router.post('/login', async (req, res) => {
     }
     const user = await userService.login(loginInput, password);
     jwt.publish(res, 3600 * 24, { id: user.id, role: user.role });
+    const fullUser = await userService.getUserById(user.id)
+    const userData = (fullUser ? fullUser.toJSON() : user.toJSON())
+    delete userData.password_hash
 
     res.send(getResult({
       token: res.getHeader('Authorization'),
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        email: user.email // 添加 email 字段
-      }
+      user: userData
     }));
   } catch (error) {
     console.error(error);

@@ -48,12 +48,6 @@
                 <el-option label="按星期" value="weekday" />
               </el-select>
             </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-radio-group v-model="chartType">
-                <el-radio-button label="bar">柱状图</el-radio-button>
-                <el-radio-button label="pie">饼图</el-radio-button>
-              </el-radio-group>
-            </el-col>
             <el-col :xs="24" :sm="12" :md="5">
               <el-select v-model="usageFilters.buildingId" clearable placeholder="全部楼栋" style="width: 100%">
                 <el-option v-for="b in buildingOptions" :key="b.id" :label="b.name" :value="b.id" />
@@ -63,6 +57,47 @@
               <el-select v-model="usageFilters.roomTypeId" clearable placeholder="全部类型" style="width: 100%">
                 <el-option v-for="t in roomTypeOptions" :key="t.id" :label="t.name" :value="t.id" />
               </el-select>
+            </el-col>
+            <el-col :xs="24" :sm="24" :md="8" class="muted kpi-sub">
+              统计口径：已通过预约次数（使用率为简化统计）
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="16" class="kpis">
+            <el-col :xs="24" :sm="8" :md="8">
+              <el-card shadow="never" class="kpi-card">
+                <div class="kpi-title">今日预约数</div>
+                <div class="kpi-value">{{ todayReservationCount }}</div>
+                <div class="muted kpi-desc">{{ todayText }}</div>
+              </el-card>
+            </el-col>
+            <el-col :xs="24" :sm="8" :md="8">
+              <el-card shadow="never" class="kpi-card">
+                <div class="kpi-title">预约通过率</div>
+                <div class="kpi-value">{{ approvalRateText }}</div>
+                <div class="muted kpi-desc">近7天（通过 / 总预约）</div>
+              </el-card>
+            </el-col>
+            <el-col :xs="24" :sm="8" :md="8">
+              <el-card shadow="never" class="kpi-card">
+                <div class="kpi-title">活跃用户数</div>
+                <div class="kpi-value">{{ activeUserCount }}</div>
+                <div class="muted kpi-desc">近7天有预约的用户</div>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="16" class="trend-row">
+            <el-col :xs="24">
+              <el-card shadow="never" class="sub-card">
+                <template #header>
+                  <div class="sub-header">
+                    <span>预约趋势（按星期占比）</span>
+                    <span class="muted">{{ startDate }} 至 {{ endDate }}</span>
+                  </div>
+                </template>
+                <div ref="trendRef" class="trend"></div>
+              </el-card>
             </el-col>
           </el-row>
 
@@ -221,13 +256,22 @@ const route = useRoute()
 
 const activeTab = ref('usage')
 
-const chartType = ref('bar')
 const groupBy = ref('roomType')
 const chartRef = ref(null)
 let chartInstance = null
 
+const trendRef = ref(null)
+let trendInstance = null
+
 const dateRange = ref([dayjs().subtract(30, 'day').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const stats = ref([])
+const dashboard = ref({
+  todayReservationCount: 0,
+  totalReservations: 0,
+  approvedReservations: 0,
+  activeUserCount: 0,
+  weekdayStats: [],
+})
 
 const usageFilters = ref({
   buildingId: null,
@@ -254,10 +298,22 @@ const endDate = computed(() => (Array.isArray(dateRange.value) ? dateRange.value
 
 const canExport = computed(() => !!startDate.value && !!endDate.value)
 
+const todayText = computed(() => dayjs().format('YYYY-MM-DD'))
+
+const todayReservationCount = computed(() => Number(dashboard.value.todayReservationCount || 0))
+const activeUserCount = computed(() => Number(dashboard.value.activeUserCount || 0))
+const approvalRateText = computed(() => {
+  const total = Number(dashboard.value.totalReservations || 0)
+  if (!total) return '—'
+  const approved = Number(dashboard.value.approvedReservations || 0)
+  const p = (approved / total) * 100
+  return `${p.toFixed(1)}%`
+})
+
 const titleText = computed(() => {
-  if (groupBy.value === 'building') return '按楼栋统计（已通过预约次数）'
-  if (groupBy.value === 'weekday') return '按星期统计（已通过预约次数）'
-  return '按教室类型统计（已通过预约次数）'
+  if (groupBy.value === 'building') return '教室使用分布（按楼栋）'
+  if (groupBy.value === 'weekday') return '教室使用分布（按星期）'
+  return '教室使用分布（按教室类型）'
 })
 
 const dimensionHeader = computed(() => {
@@ -297,6 +353,12 @@ function ensureChart() {
   return chartInstance
 }
 
+function ensureTrendChart() {
+  if (!trendRef.value) return null
+  if (!trendInstance) trendInstance = echarts.init(trendRef.value)
+  return trendInstance
+}
+
 function renderChart() {
   const chart = ensureChart()
   if (!chart) return
@@ -307,37 +369,54 @@ function renderChart() {
     return
   }
 
-  if (chartType.value === 'pie') {
-    chart.setOption({
-      tooltip: { trigger: 'item' },
-      legend: { top: 0 },
-      series: [
-        {
-          type: 'pie',
-          radius: ['35%', '70%'],
-          avoidLabelOverlap: true,
-          label: { formatter: '{b}: {d}%' },
-          data: data.map((x) => ({ name: x.label, value: x.count })),
-        },
-      ],
-    })
-    return
-  }
-
   chart.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: { trigger: 'item', formatter: '{b}<br/>次数：{c}<br/>占比：{d}%' },
+    legend: { top: 0 },
+    series: [
+      {
+        type: 'pie',
+        radius: ['35%', '70%'],
+        avoidLabelOverlap: true,
+        label: { formatter: '{b}: {c} ({d}%)' },
+        data: data.map((x) => ({ name: x.label, value: x.count })),
+      },
+    ],
+  })
+}
+
+function renderTrend() {
+  const chart = ensureTrendChart()
+  if (!chart) return
+  const series = Array.isArray(dashboard.value.weekdayStats) ? dashboard.value.weekdayStats : []
+  const total = series.reduce((sum, x) => sum + (Number(x?.count) || 0), 0)
+  const percents = series.map((x) => {
+    const c = Number(x?.count) || 0
+    return total > 0 ? (c / total) * 100 : 0
+  })
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params) => {
+        const p = Array.isArray(params) && params.length > 0 ? params[0] : null
+        if (!p) return ''
+        const idx = p.dataIndex
+        const count = Number(series?.[idx]?.count) || 0
+        const percent = Number.isFinite(percents[idx]) ? percents[idx] : 0
+        return `${p.axisValue}<br/>预约数：${count}<br/>占比：${percent.toFixed(1)}%`
+      },
+    },
     grid: { left: 20, right: 20, top: 20, bottom: 40, containLabel: true },
     xAxis: {
       type: 'category',
-      data: data.map((x) => x.label),
-      axisLabel: { interval: 0, rotate: groupBy.value === 'weekday' ? 0 : 20 },
+      data: series.map((x) => x.weekdayName || x.label || '—'),
+      axisLabel: { interval: 0, rotate: 0 },
     },
-    yAxis: { type: 'value' },
+    yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
     series: [
       {
         type: 'bar',
-        data: data.map((x) => x.count),
-        barMaxWidth: 48,
+        data: percents,
+        barMaxWidth: 36,
       },
     ],
   })
@@ -348,23 +427,60 @@ async function refresh() {
   return refreshUsage()
 }
 
+async function refreshDashboard() {
+  const resp = await adminService.getDashboardStats({
+    startDate: startDate.value,
+    endDate: endDate.value,
+    buildingId: usageFilters.value.buildingId || undefined,
+    roomTypeId: usageFilters.value.roomTypeId || undefined,
+    today: dayjs().format('YYYY-MM-DD'),
+  })
+  dashboard.value =
+    resp?.code === 0
+      ? resp?.data || {
+          todayReservationCount: 0,
+          totalReservations: 0,
+          approvedReservations: 0,
+          activeUserCount: 0,
+          weekdayStats: [],
+        }
+      : {
+          todayReservationCount: 0,
+          totalReservations: 0,
+          approvedReservations: 0,
+          activeUserCount: 0,
+          weekdayStats: [],
+        }
+}
+
 async function refreshUsage() {
   if (!startDate.value || !endDate.value) return
   isLoading.value = true
   try {
-    const resp = await adminService.getUsageStats({
-      startDate: startDate.value,
-      endDate: endDate.value,
-      groupBy: groupBy.value,
-      buildingId: usageFilters.value.buildingId || undefined,
-      roomTypeId: usageFilters.value.roomTypeId || undefined,
-    })
-    stats.value = resp?.code === 0 ? resp?.data || [] : []
+    const [usageResp] = await Promise.all([
+      adminService.getUsageStats({
+        startDate: startDate.value,
+        endDate: endDate.value,
+        groupBy: groupBy.value,
+        buildingId: usageFilters.value.buildingId || undefined,
+        roomTypeId: usageFilters.value.roomTypeId || undefined,
+      }),
+      refreshDashboard(),
+    ])
+    stats.value = usageResp?.code === 0 ? usageResp?.data || [] : []
   } catch (e) {
     stats.value = []
+    dashboard.value = {
+      todayReservationCount: 0,
+      totalReservations: 0,
+      approvedReservations: 0,
+      activeUserCount: 0,
+      weekdayStats: [],
+    }
   } finally {
     isLoading.value = false
     renderChart()
+    renderTrend()
   }
 }
 
@@ -532,9 +648,10 @@ async function exportCsv() {
 
 function handleResize() {
   if (chartInstance) chartInstance.resize()
+  if (trendInstance) trendInstance.resize()
 }
 
-watch([normalizedStats, chartType], () => renderChart())
+watch([normalizedStats], () => renderChart())
 
 watch(
   () => [dateRange.value, groupBy.value, usageFilters.value.buildingId, usageFilters.value.roomTypeId],
@@ -603,6 +720,10 @@ onUnmounted(() => {
     chartInstance.dispose()
     chartInstance = null
   }
+  if (trendInstance) {
+    trendInstance.dispose()
+    trendInstance = null
+  }
 })
 </script>
 
@@ -656,6 +777,49 @@ onUnmounted(() => {
 
 .tabs {
   margin-top: 4px;
+}
+
+.kpi-sub {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.kpis {
+  margin-bottom: 12px;
+}
+
+.kpi-card {
+  height: 100%;
+}
+
+.kpi-title {
+  font-weight: 600;
+  color: #303133;
+}
+
+.kpi-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kpi-desc {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.trend-row {
+  margin-bottom: 12px;
+}
+
+.trend {
+  height: 260px;
+}
+
+.chart {
+  height: 420px;
 }
 
 .chart {

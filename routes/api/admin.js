@@ -4,17 +4,34 @@ import reservationService from '../../services/reservationService.js';
 import scheduleService from '../../services/scheduleService.js';
 import statisticsService from '../../services/statisticsService.js';
 import roomService from '../../services/roomService.js';
-import { Admin, SystemLog, User, Reservation, Room, Building, RoomType, TimeSlot } from '../../models/index.js';
+import { Admin, AdminScope, SystemLog, User, Reservation, Room, Building, RoomType, TimeSlot } from '../../models/index.js';
 import { Op } from 'sequelize';
 
 const router = express.Router();
 
 async function resolveAdminId(req) {
-  const adminId = req.body?.adminId || req.query?.adminId
-  if (adminId) return parseInt(adminId)
   if (!req.userId) return null
   const admin = await Admin.findOne({ where: { user_id: req.userId } })
   return admin?.id || null
+}
+
+async function requireSystemAdmin(req) {
+  if (!req.userId) throw new Error('未登录')
+  const admin = await Admin.findOne({ where: { user_id: req.userId } })
+  if (!admin) throw new Error('无权访问此接口')
+  if (!admin.is_system) throw new Error('仅系统管理员可操作')
+  return admin
+}
+
+async function getAdminContext(req) {
+  if (!req.userId) return null
+  const admin = await Admin.findOne({ where: { user_id: req.userId } })
+  if (!admin) return null
+  if (admin.is_system) return { adminId: admin.id, isSystem: true, buildingIds: [] }
+  const scopes = await AdminScope.findAll({ where: { admin_id: admin.id, scope_type: 'building' } })
+  const buildingIds = (scopes || []).map((s) => s.scope_id).filter((x) => Number.isFinite(x))
+  if (buildingIds.length === 0) return { adminId: admin.id, isSystem: false, buildingIds: [-1] }
+  return { adminId: admin.id, isSystem: false, buildingIds }
 }
 
 /**
@@ -168,6 +185,146 @@ router.get('/users', async (req, res) => {
   }
 })
 
+router.get('/user-management/users', async (req, res) => {
+  try {
+    await requireSystemAdmin(req)
+
+    const { page = 1, pageSize = 20, role, keyword } = req.query
+    const limit = Math.min(Math.max(parseInt(pageSize) || 20, 1), 200)
+    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limit
+
+    const where = {}
+    if (role) where.role = String(role)
+    if (keyword) {
+      const kw = `%${String(keyword).trim()}%`
+      where[Op.or] = [{ name: { [Op.like]: kw } }, { email: { [Op.like]: kw } }]
+    }
+
+    const { rows, count } = await User.findAndCountAll({
+      where,
+      include: [
+        {
+          model: Admin,
+          required: false,
+          include: [{ model: AdminScope, required: false }]
+        }
+      ],
+      order: [['id', 'DESC']],
+      limit,
+      offset
+    })
+
+    res.send(getResult({ list: rows, total: count, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }))
+  } catch (error) {
+    console.error(error)
+    res.send(getErr(error.message))
+  }
+})
+
+router.post('/user-management/users', async (req, res) => {
+  try {
+    await requireSystemAdmin(req)
+
+    const { name, email, password, role, is_system, buildingIds } = req.body || {}
+    if (!name || !email || !password || !role) return res.send(getErr('name, email, password and role are required', 400))
+
+    const existing = await User.findOne({ where: { email } })
+    if (existing) return res.send(getErr('邮箱已被注册', 400))
+
+    const user = await User.create({ name, email, password_hash: password, role })
+
+    if (role === 'admin') {
+      const admin = await Admin.create({ user_id: user.id, is_system: !!is_system })
+      if (!admin.is_system && Array.isArray(buildingIds)) {
+        const ids = Array.from(new Set(buildingIds.map((x) => parseInt(x)).filter((x) => Number.isFinite(x))))
+        if (ids.length > 0) {
+          await AdminScope.bulkCreate(ids.map((id) => ({ admin_id: admin.id, scope_type: 'building', scope_id: id })))
+        }
+      }
+    }
+
+    const result = await User.findByPk(user.id, {
+      include: [{ model: Admin, required: false, include: [{ model: AdminScope, required: false }] }]
+    })
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error)
+    res.send(getErr(error.message))
+  }
+})
+
+router.put('/user-management/users/:id', async (req, res) => {
+  try {
+    await requireSystemAdmin(req)
+
+    const userId = parseInt(req.params.id)
+    const { name, email, password, role, is_system, buildingIds } = req.body || {}
+    const user = await User.findByPk(userId)
+    if (!user) return res.send(getErr('用户不存在', 404))
+
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ where: { email, id: { [Op.ne]: userId } } })
+      if (existing) return res.send(getErr('邮箱已被注册', 400))
+      user.email = email
+    }
+    if (name !== undefined) user.name = name
+    if (role !== undefined) user.role = role
+    if (password) user.password_hash = password
+    await user.save()
+
+    let admin = await Admin.findOne({ where: { user_id: user.id } })
+    if (user.role === 'admin') {
+      if (!admin) admin = await Admin.create({ user_id: user.id, is_system: !!is_system })
+      if (is_system !== undefined) admin.is_system = !!is_system
+      await admin.save()
+
+      await AdminScope.destroy({ where: { admin_id: admin.id, scope_type: 'building' } })
+      if (!admin.is_system && Array.isArray(buildingIds)) {
+        const ids = Array.from(new Set(buildingIds.map((x) => parseInt(x)).filter((x) => Number.isFinite(x))))
+        if (ids.length > 0) {
+          await AdminScope.bulkCreate(ids.map((id) => ({ admin_id: admin.id, scope_type: 'building', scope_id: id })))
+        }
+      }
+    } else {
+      if (admin) {
+        await AdminScope.destroy({ where: { admin_id: admin.id } })
+        admin.is_system = false
+        await admin.save()
+      }
+    }
+
+    const result = await User.findByPk(user.id, {
+      include: [{ model: Admin, required: false, include: [{ model: AdminScope, required: false }] }]
+    })
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error)
+    res.send(getErr(error.message))
+  }
+})
+
+router.delete('/user-management/users/:id', async (req, res) => {
+  try {
+    await requireSystemAdmin(req)
+
+    const userId = parseInt(req.params.id)
+    if (req.userId && userId === parseInt(req.userId)) return res.send(getErr('不能删除当前登录用户', 400))
+
+    const user = await User.findByPk(userId)
+    if (!user) return res.send(getErr('用户不存在', 404))
+
+    const admin = await Admin.findOne({ where: { user_id: user.id } })
+    if (admin) {
+      await AdminScope.destroy({ where: { admin_id: admin.id } })
+    }
+    await user.destroy()
+    res.send(getResult(true))
+  } catch (error) {
+    console.error(error)
+    res.send(getErr(error.message))
+  }
+})
+
 /**
  * 导入教师课表
  * POST /import/teacher-schedules
@@ -210,13 +367,16 @@ router.post('/import/courses', async (req, res) => {
  */
 router.get('/stats/usage', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req)
+    if (!ctx) return res.send(getErr('无权访问此接口', 403))
     const { startDate, endDate, groupBy, buildingId, roomTypeId } = req.query;
     if (!startDate || !endDate) {
       return res.send(getErr('startDate and endDate are required', 400));
     }
     const result = await statisticsService.getRoomUsageStats(startDate, endDate, groupBy, {
       buildingId: buildingId ? parseInt(buildingId) : undefined,
-      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined
+      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined,
+      allowedBuildingIds: ctx && !ctx.isSystem ? ctx.buildingIds : undefined
     });
     res.send(getResult(result));
   } catch (error) {
@@ -225,8 +385,33 @@ router.get('/stats/usage', async (req, res) => {
   }
 });
 
+router.get('/stats/dashboard', async (req, res) => {
+  try {
+    const ctx = await getAdminContext(req)
+    if (!ctx) return res.send(getErr('无权访问此接口', 403))
+    const { startDate, endDate, buildingId, roomTypeId, today } = req.query
+    if (!startDate || !endDate) {
+      return res.send(getErr('startDate and endDate are required', 400))
+    }
+    const result = await statisticsService.getDashboardStats({
+      startDate,
+      endDate,
+      today: today || undefined,
+      buildingId: buildingId ? parseInt(buildingId) : undefined,
+      roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined,
+      allowedBuildingIds: ctx && !ctx.isSystem ? ctx.buildingIds : undefined
+    })
+    res.send(getResult(result))
+  } catch (error) {
+    console.error(error)
+    res.send(getErr(error.message))
+  }
+})
+
 router.get('/reservations/export', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req)
+    if (!ctx) return res.send(getErr('无权访问此接口', 403))
     const { startDate, endDate } = req.query;
     if (!startDate || !endDate) {
       return res.send(getErr('startDate and endDate are required', 400));
@@ -251,7 +436,8 @@ router.get('/reservations/export', async (req, res) => {
       keyword: keyword || undefined,
       page: page ? parseInt(page) : 1,
       pageSize: pageSize ? parseInt(pageSize) : 50,
-      exportAll: String(exportAll || '').toLowerCase() === 'true' || exportAll === '1'
+      exportAll: String(exportAll || '').toLowerCase() === 'true' || exportAll === '1',
+      allowedBuildingIds: ctx && !ctx.isSystem ? ctx.buildingIds : undefined
     })
     res.send(getResult(result));
   } catch (error) {
@@ -262,12 +448,14 @@ router.get('/reservations/export', async (req, res) => {
 
 router.get('/occupancy', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req)
+    if (!ctx) return res.send(getErr('无权访问此接口', 403))
     const { date, buildingId, roomTypeId } = req.query
     if (!date) return res.send(getErr('date is required', 400))
     const result = await roomService.getDailyOccupancy(date, {
       buildingId: buildingId ? parseInt(buildingId) : undefined,
       roomTypeId: roomTypeId ? parseInt(roomTypeId) : undefined
-    })
+    }, ctx && !ctx.isSystem ? ctx.buildingIds : undefined)
     res.send(getResult(result))
   } catch (error) {
     console.error(error);

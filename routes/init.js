@@ -7,6 +7,7 @@ import reservationRouter from './api/reservation.js'
 import adminRouter from './api/admin.js'
 import scheduleRouter from './api/schedule.js'
 import cors from 'cors'
+import { ensureSchema } from '../models/ensureSchema.js'
 
 const app = express()
 
@@ -48,6 +49,14 @@ app.use('/api/schedule', scheduleRouter)
 
 
 const port = 5010
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`)
+async function start() {
+  await ensureSchema()
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`)
+  })
+}
+
+start().catch((e) => {
+  console.error('Server start failed:', e)
+  process.exit(1)
 })

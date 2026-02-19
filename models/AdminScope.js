@@ -7,6 +7,10 @@ const AdminScope = sequelize.define('AdminScope', {
     primaryKey: true,
     autoIncrement: true
   },
+  admin_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
   scope_type: {
     type: DataTypes.ENUM('building', 'room_type'),
     allowNull: false

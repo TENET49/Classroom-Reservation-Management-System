@@ -1,8 +1,32 @@
 import express from 'express';
 import { getErr, getResult } from '../getSendResult.js';
 import roomService from '../../services/roomService.js';
+import { Admin, AdminScope, Room, RoomUnavailable } from '../../models/index.js';
 
 const router = express.Router();
+
+async function getAdminContext(req) {
+  if (!req.userId) return null;
+  const admin = await Admin.findOne({ where: { user_id: req.userId } });
+  if (!admin) return null;
+  if (admin.is_system) return { adminId: admin.id, isSystem: true, buildingIds: [] };
+  const scopes = await AdminScope.findAll({ where: { admin_id: admin.id, scope_type: 'building' } });
+  const buildingIds = (scopes || []).map((s) => s.scope_id).filter((x) => Number.isFinite(x));
+  if (buildingIds.length === 0) return { adminId: admin.id, isSystem: false, buildingIds: [-1] };
+  return { adminId: admin.id, isSystem: false, buildingIds };
+}
+
+function ensureSystemAdmin(ctx) {
+  if (!ctx) throw new Error('无权访问');
+  if (!ctx.isSystem) throw new Error('仅系统管理员可操作');
+}
+
+function ensureBuildingAllowed(ctx, buildingId) {
+  if (!ctx) throw new Error('无权访问');
+  if (ctx.isSystem) return;
+  if (!ctx.buildingIds || ctx.buildingIds.length === 0) throw new Error('未配置楼栋权限');
+  if (!ctx.buildingIds.includes(buildingId)) throw new Error('无权操作该楼栋');
+}
 
 /**
  * 查询可用教室
@@ -50,7 +74,8 @@ router.get('/all', async (req, res) => {
  */
 router.get('/buildings', async (req, res) => {
   try {
-    const result = await roomService.getBuildings(req.query);
+    const ctx = await getAdminContext(req);
+    const result = await roomService.getBuildings(req.query, ctx && !ctx.isSystem ? ctx.buildingIds : undefined);
     res.send(getResult(result));
   } catch (error) {
     console.error(error);
@@ -75,7 +100,8 @@ router.get('/room-types', async (req, res) => {
 
 router.get('/unavailable', async (req, res) => {
   try {
-    const result = await roomService.listRoomUnavailables(req.query)
+    const ctx = await getAdminContext(req);
+    const result = await roomService.listRoomUnavailables(req.query, ctx && !ctx.isSystem ? ctx.buildingIds : undefined)
     res.send(getResult(result))
   } catch (error) {
     console.error(error);
@@ -85,6 +111,13 @@ router.get('/unavailable', async (req, res) => {
 
 router.delete('/unavailable/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    if (!ctx) throw new Error('无权访问');
+    if (!ctx.isSystem) {
+      const row = await RoomUnavailable.findByPk(req.params.id, { include: [{ model: Room, required: true }] });
+      if (!row) throw new Error('记录不存在');
+      ensureBuildingAllowed(ctx, row.Room.building_id);
+    }
     const result = await roomService.deleteRoomUnavailable(req.params.id)
     res.send(getResult(result))
   } catch (error) {
@@ -135,6 +168,12 @@ router.get('/:id/schedule', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    const buildingId = parseInt(req.body?.building_id);
+    if (!Number.isFinite(buildingId)) {
+      return res.send(getErr('building_id is required', 400));
+    }
+    ensureBuildingAllowed(ctx, buildingId);
     const result = await roomService.createRoom(req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -149,6 +188,8 @@ router.post('/', async (req, res) => {
  */
 router.post('/building', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.createBuilding(req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -163,6 +204,8 @@ router.post('/building', async (req, res) => {
  */
 router.put('/building/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.updateBuilding(req.params.id, req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -177,6 +220,8 @@ router.put('/building/:id', async (req, res) => {
  */
 router.delete('/building/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.deleteBuilding(req.params.id);
     res.send(getResult(result));
   } catch (error) {
@@ -191,6 +236,8 @@ router.delete('/building/:id', async (req, res) => {
  */
 router.post('/room-type', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.createRoomType(req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -205,6 +252,8 @@ router.post('/room-type', async (req, res) => {
  */
 router.put('/room-type/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.updateRoomType(req.params.id, req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -219,6 +268,8 @@ router.put('/room-type/:id', async (req, res) => {
  */
 router.delete('/room-type/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    ensureSystemAdmin(ctx);
     const result = await roomService.deleteRoomType(req.params.id);
     res.send(getResult(result));
   } catch (error) {
@@ -233,6 +284,15 @@ router.delete('/room-type/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    if (ctx && !ctx.isSystem) {
+      const room = await Room.findByPk(req.params.id);
+      if (!room) return res.send(getErr('Room not found', 404));
+      const bodyBuildingId = parseInt(req.body?.building_id);
+      const targetBuildingId = Number.isFinite(bodyBuildingId) ? bodyBuildingId : room.building_id;
+      ensureBuildingAllowed(ctx, room.building_id);
+      ensureBuildingAllowed(ctx, targetBuildingId);
+    }
     const result = await roomService.updateRoom(req.params.id, req.body);
     res.send(getResult(result));
   } catch (error) {
@@ -247,6 +307,12 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    if (ctx && !ctx.isSystem) {
+      const room = await Room.findByPk(req.params.id);
+      if (!room) return res.send(getErr('Room not found', 404));
+      ensureBuildingAllowed(ctx, room.building_id);
+    }
     const result = await roomService.deleteRoom(req.params.id);
     res.send(getResult(result));
   } catch (error) {
@@ -261,6 +327,15 @@ router.delete('/:id', async (req, res) => {
  */
 router.post('/unavailable', async (req, res) => {
   try {
+    const ctx = await getAdminContext(req);
+    if (!ctx) throw new Error('无权访问');
+    if (!ctx.isSystem) {
+      const roomId = parseInt(req.body?.room_id ?? req.body?.roomId);
+      if (!Number.isFinite(roomId)) return res.send(getErr('room_id is required', 400));
+      const room = await Room.findByPk(roomId);
+      if (!room) return res.send(getErr('Room not found', 404));
+      ensureBuildingAllowed(ctx, room.building_id);
+    }
     const result = await roomService.setRoomUnavailable(req.body);
     res.send(getResult(result));
   } catch (error) {

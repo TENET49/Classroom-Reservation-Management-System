@@ -31,6 +31,27 @@ export default {
     return request.get('/admin/users', { params });
   },
 
+  // 用户管理（系统管理员）
+  // params: { page, pageSize, role, keyword }
+  getManagedUsers(params) {
+    return request.get('/admin/user-management/users', { params });
+  },
+
+  // 创建用户（系统管理员）
+  createManagedUser(data) {
+    return request.post('/admin/user-management/users', data);
+  },
+
+  // 更新用户（系统管理员）
+  updateManagedUser(id, data) {
+    return request.put(`/admin/user-management/users/${id}`, data);
+  },
+
+  // 删除用户（系统管理员）
+  deleteManagedUser(id) {
+    return request.delete(`/admin/user-management/users/${id}`);
+  },
+
   // 导出预约记录（预览/导出）
   // params: { startDate, endDate, status, buildingId, roomTypeId, keyword, page, pageSize, exportAll }
   exportReservationRecords(params) {
@@ -57,5 +78,11 @@ export default {
   // params: { startDate, endDate }
   getUsageStats(params) {
     return request.get('/admin/stats/usage', { params });
+  },
+
+  // 统计页看板指标
+  // params: { startDate, endDate, buildingId, roomTypeId, today }
+  getDashboardStats(params) {
+    return request.get('/admin/stats/dashboard', { params });
   }
 };

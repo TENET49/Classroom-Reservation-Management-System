@@ -46,14 +46,24 @@
 
     <!-- 3. 管理员专区 (需要权限控制 v-if) -->
     <template v-if="authStore.user?.role === 'admin'">
+      <el-sub-menu v-if="authStore.user?.Admin?.is_system" index="sys">
+        <template #title>
+          <el-icon><Setting /></el-icon>
+          <span>系统管理</span>
+        </template>
+        <el-menu-item-group>
+          <el-menu-item index="/admin/user-management">用户管理</el-menu-item>
+        </el-menu-item-group>
+      </el-sub-menu>
+
       <el-sub-menu index="4">
         <template #title>
           <el-icon><Management /></el-icon>
           <span>教室资源管理</span>
         </template>
         <el-menu-item-group>
-          <el-menu-item index="/admin/buildings">楼栋管理</el-menu-item>
-          <el-menu-item index="/admin/resources?tab=room-types">教室类型管理</el-menu-item>
+          <el-menu-item v-if="authStore.user?.Admin?.is_system" index="/admin/buildings">楼栋管理</el-menu-item>
+          <el-menu-item v-if="authStore.user?.Admin?.is_system" index="/admin/resources?tab=room-types">教室类型管理</el-menu-item>
           <el-menu-item index="/admin/resources?tab=rooms">教室信息管理</el-menu-item>
           <el-menu-item index="/admin/maintenance">教室状态维护</el-menu-item>
         </el-menu-item-group>

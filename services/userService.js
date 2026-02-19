@@ -1,4 +1,4 @@
-import { User } from '../models/index.js';
+import { Admin, AdminScope, User } from '../models/index.js';
 
 class UserService {
   /**
@@ -59,7 +59,20 @@ class UserService {
    * @returns {Promise<User>}
    */
   async getUserById(id) {
-    return await User.findByPk(id);
+    return await User.findByPk(id, {
+      include: [
+        {
+          model: Admin,
+          include: [
+            {
+              model: AdminScope,
+              required: false
+            }
+          ],
+          required: false
+        }
+      ]
+    });
   }
 }
 

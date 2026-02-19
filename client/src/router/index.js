@@ -71,6 +71,12 @@ const router = createRouter({
           meta: { title: '楼栋管理' }
         },
         {
+          path: '/admin/user-management',
+          name: 'AdminUserManagement',
+          component: () => import('../views/admin/user-management.vue'),
+          meta: { title: '用户管理' }
+        },
+        {
           path: '/admin/resources',
           name: 'AdminResources',
           component: () => import('../views/admin/resources.vue'),

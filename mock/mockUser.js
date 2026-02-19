@@ -14,7 +14,7 @@ export const mockUser = async () => {
 
   // 创建管理员详情
   // 假设 createdUsers[4] 是系统管理员，createdUsers[5] 是楼栋管理员
-  const sysAdmin = await Admin.create({ user_id: createdUsers[4].id });
+  const sysAdmin = await Admin.create({ user_id: createdUsers[4].id, is_system: true });
   const buildAdmin = await Admin.create({ user_id: createdUsers[5].id });
 
   // 分配权限范围

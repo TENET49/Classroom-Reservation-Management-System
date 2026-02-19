@@ -4,12 +4,15 @@ import { Op } from 'sequelize';
 class RoomService {
   // ================= 资源管理 (管理员) =================
 
-  async getBuildings(query = {}) {
+  async getBuildings(query = {}, allowedBuildingIds) {
     const { page = 1, pageSize = 20, keyword } = query
     const limit = Math.min(Math.max(parseInt(pageSize) || 20, 1), 200)
     const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limit
 
     const where = {}
+    if (Array.isArray(allowedBuildingIds) && allowedBuildingIds.length > 0) {
+      where.id = { [Op.in]: allowedBuildingIds }
+    }
     if (keyword) {
       const kw = `%${String(keyword).trim()}%`
       where[Op.or] = [
@@ -228,7 +231,7 @@ class RoomService {
     return await RoomUnavailable.create(payload);
   }
 
-  async listRoomUnavailables(query = {}) {
+  async listRoomUnavailables(query = {}, allowedBuildingIds) {
     const {
       page = 1,
       pageSize = 20,
@@ -266,7 +269,20 @@ class RoomService {
     }
 
     const roomWhere = {}
-    if (buildingId) roomWhere.building_id = parseInt(buildingId)
+    const allowedIds = Array.isArray(allowedBuildingIds)
+      ? allowedBuildingIds.map((x) => parseInt(x)).filter((x) => Number.isFinite(x))
+      : []
+    if (allowedIds.length > 0) {
+      roomWhere.building_id = { [Op.in]: allowedIds }
+    }
+    if (buildingId) {
+      const bid = parseInt(buildingId)
+      if (allowedIds.length > 0 && !allowedIds.includes(bid)) {
+        roomWhere.building_id = -1
+      } else {
+        roomWhere.building_id = bid
+      }
+    }
 
     const { count, rows } = await RoomUnavailable.findAndCountAll({
       where,
@@ -301,12 +317,23 @@ class RoomService {
 
   // ================= 可用性查询 (核心业务) =================
 
-  async getDailyOccupancy(date, query = {}) {
+  async getDailyOccupancy(date, query = {}, allowedBuildingIds) {
     if (!date) throw new Error('date is required')
     const { buildingId, roomTypeId } = query
 
     const roomWhere = {}
-    if (buildingId) roomWhere.building_id = parseInt(buildingId)
+    const allowedIds = Array.isArray(allowedBuildingIds)
+      ? allowedBuildingIds.map((x) => parseInt(x)).filter((x) => Number.isFinite(x))
+      : []
+    if (allowedIds.length > 0) roomWhere.building_id = { [Op.in]: allowedIds }
+    if (buildingId) {
+      const bid = parseInt(buildingId)
+      if (allowedIds.length > 0 && !allowedIds.includes(bid)) {
+        roomWhere.building_id = -1
+      } else {
+        roomWhere.building_id = bid
+      }
+    }
     if (roomTypeId) roomWhere.room_type_id = parseInt(roomTypeId)
 
     const [timeSlots, rooms] = await Promise.all([

@@ -124,16 +124,10 @@ class ReservationService {
         }
       }
 
-      // 超级管理员(admin)可能不需要 scope 限制，这里假设 admin 表里的都是普通管理员，
-      // 或者在 User 表里的 role='admin' 有最高权限。
-      // 这里严格按照 "按楼栋或教室类型分配不同审核员" 实现。
+      // 系统管理员不受 scope 限制；楼栋管理员必须命中 scope
       if (!hasPermission) {
-        // 检查是否是系统超级管理员 (User.role === 'admin')
-        const adminUser = await Admin.findByPk(adminId, { include: [User] });
-        if (adminUser?.User?.role !== 'admin') {
-          // 如果不是超级管理员，且没有scope权限
-          throw new Error('无权审核该教室的预约');
-        }
+        const adminUser = await Admin.findByPk(adminId);
+        if (!adminUser?.is_system) throw new Error('无权审核该教室的预约');
       }
 
       // 2. 如果是批准，再次检查冲突 (防止在审核期间产生了新的 approved 预约)
@@ -255,10 +249,15 @@ class ReservationService {
     const roomTypeScopeIds = adminScopes.filter(s => s.scope_type === 'room_type').map(s => s.scope_id)
 
     const roomWhere = {}
-    const scopeOr = []
-    if (buildingScopeIds.length > 0) scopeOr.push({ building_id: { [Op.in]: buildingScopeIds } })
-    if (roomTypeScopeIds.length > 0) scopeOr.push({ room_type_id: { [Op.in]: roomTypeScopeIds } })
-    if (scopeOr.length > 0) roomWhere[Op.or] = scopeOr
+    if (!admin.is_system) {
+      const scopeOr = []
+      if (buildingScopeIds.length > 0) scopeOr.push({ building_id: { [Op.in]: buildingScopeIds } })
+      if (roomTypeScopeIds.length > 0) scopeOr.push({ room_type_id: { [Op.in]: roomTypeScopeIds } })
+      if (scopeOr.length === 0) {
+        return { list: [], total: 0, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }
+      }
+      roomWhere[Op.or] = scopeOr
+    }
 
     if (buildingId) roomWhere.building_id = buildingId
     if (roomTypeId) roomWhere.room_type_id = roomTypeId
@@ -327,6 +326,20 @@ class ReservationService {
       ]
     }
 
+    const roomWhere = {}
+    if (!admin.is_system) {
+      const adminScopes = await AdminScope.findAll({ where: { admin_id: adminId } })
+      const buildingScopeIds = adminScopes.filter(s => s.scope_type === 'building').map(s => s.scope_id)
+      const roomTypeScopeIds = adminScopes.filter(s => s.scope_type === 'room_type').map(s => s.scope_id)
+      const scopeOr = []
+      if (buildingScopeIds.length > 0) scopeOr.push({ building_id: { [Op.in]: buildingScopeIds } })
+      if (roomTypeScopeIds.length > 0) scopeOr.push({ room_type_id: { [Op.in]: roomTypeScopeIds } })
+      if (scopeOr.length === 0) {
+        return { list: [], total: 0, page: Math.max(parseInt(page) || 1, 1), pageSize: limit }
+      }
+      roomWhere[Op.or] = scopeOr
+    }
+
     const { rows, count } = await ReservationAudit.findAndCountAll({
       where,
       include: [
@@ -335,7 +348,12 @@ class ReservationService {
           model: Reservation,
           include: [
             { model: User, attributes: ['id', 'name', 'email', 'role'] },
-            { model: Room, include: [Building, RoomType] },
+            {
+              model: Room,
+              include: [Building, RoomType],
+              where: Object.keys(roomWhere).length > 0 ? roomWhere : undefined,
+              required: Object.keys(roomWhere).length > 0
+            },
             { model: TimeSlot }
           ]
         }

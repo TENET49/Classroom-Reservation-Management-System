@@ -36,11 +36,16 @@ const needTokenApi = [
   { method: "GET", path: "/api/admin/audits", roles: ['admin'] },
   { method: "GET", path: "/api/admin/system-logs", roles: ['admin'] },
   { method: "GET", path: "/api/admin/users", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/user-management/users", roles: ['admin'] },
+  { method: "POST", path: "/api/admin/user-management/users", roles: ['admin'] },
+  { method: "PUT", path: "/api/admin/user-management/users/:id", roles: ['admin'] },
+  { method: "DELETE", path: "/api/admin/user-management/users/:id", roles: ['admin'] },
   { method: "GET", path: "/api/admin/reservations/export", roles: ['admin'] },
   { method: "GET", path: "/api/admin/occupancy", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/teacher-schedules", roles: ['admin'] },
   { method: "POST", path: "/api/admin/import/courses", roles: ['admin'] },
   { method: "GET", path: "/api/admin/stats/usage", roles: ['admin'] },
+  { method: "GET", path: "/api/admin/stats/dashboard", roles: ['admin'] },
 
   // 教师课表
   { method: "GET", path: "/api/schedule/teacher/conflict", roles: ['teacher'] },

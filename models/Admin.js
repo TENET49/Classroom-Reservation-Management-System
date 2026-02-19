@@ -10,6 +10,11 @@ const Admin = sequelize.define('Admin', {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false
+  },
+  is_system: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   underscored: true,
